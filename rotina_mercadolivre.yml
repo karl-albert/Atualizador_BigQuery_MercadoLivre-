@@ -1,0 +1,36 @@
+name: Rotina Diária Mercado Livre - BigQuery
+
+on:
+  schedule:
+    # Executa todos os dias às 06h00 Horário de Brasília (09h00 UTC)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Permite execução manual com um clique no painel do GitHub
+
+jobs:
+  atualizar-mercadolivre:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Clonar Repositório
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Instalar Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Executar Coleta e Carga no BigQuery
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mercado-livre-mais-vendidos' }}
+          DATASET_ID: 'Mercado_Livre'
+          TABELA_ID: 'Fato_MercadoLivre_MaisVendidos'
+        run: |
+          python atualizar_mercadolivre.py

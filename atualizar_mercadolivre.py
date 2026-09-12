@@ -42,19 +42,21 @@ TABELA_ID = os.environ.get("TABELA_ID", "Fato_MercadoLivre_MaisVendidos").strip(
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCAL_PARQUET = os.path.join(SCRIPT_DIR, "Fato_MercadoLivre_MaisVendidos.parquet")
 LOCAL_CSV = os.path.join(SCRIPT_DIR, "Fato_MercadoLivre_MaisVendidos.csv")
+JSON_DIR = os.path.join(SCRIPT_DIR, "JSON")
 
 # ==============================================================================
 # 1. CONEXÃO COM O BIGQUERY
 # ==============================================================================
 def obter_cliente_bigquery():
-    """Inicializa o cliente do BigQuery via Service Account ou ADC."""
+    """Inicializa o cliente do BigQuery via Service Account (GitHub Actions ou JSON local)."""
     try:
+        # 1. Tentar via variável de ambiente (GitHub Actions Secrets)
         if GCP_SA_KEY:
             try:
                 sa_info = json.loads(GCP_SA_KEY.strip())
                 credentials = service_account.Credentials.from_service_account_info(sa_info)
                 client = bigquery.Client(project=GCP_PROJECT_ID, credentials=credentials)
-                logger.info(f"Conectado ao BigQuery via Service Account no projeto '{GCP_PROJECT_ID}'.")
+                logger.info(f"Conectado ao BigQuery via Secret do GitHub no projeto '{GCP_PROJECT_ID}'.")
                 return client
             except json.JSONDecodeError:
                 if os.path.exists(GCP_SA_KEY.strip()):
@@ -62,7 +64,21 @@ def obter_cliente_bigquery():
                     client = bigquery.Client(project=GCP_PROJECT_ID, credentials=credentials)
                     logger.info(f"Conectado ao BigQuery via arquivo '{GCP_SA_KEY}'.")
                     return client
-        
+
+        # 2. Tentar via arquivo .json na pasta local JSON/
+        if os.path.exists(JSON_DIR):
+            for f in os.listdir(JSON_DIR):
+                if f.endswith(".json"):
+                    key_file = os.path.join(JSON_DIR, f)
+                    try:
+                        credentials = service_account.Credentials.from_service_account_file(key_file)
+                        client = bigquery.Client(project=GCP_PROJECT_ID, credentials=credentials)
+                        logger.info(f"Conectado ao BigQuery via chave local '{f}'.")
+                        return client
+                    except Exception as err:
+                        logger.warning(f"Erro ao ler chave '{f}': {err}")
+
+        # 3. Tentar via ADC padrão
         client = bigquery.Client(project=GCP_PROJECT_ID)
         logger.info(f"Conectado ao BigQuery via ADC no projeto '{GCP_PROJECT_ID}'.")
         return client
@@ -268,17 +284,23 @@ def extrair_lote_diario(dt_brt=None):
                 fator_promo = random.choice([0.88, 0.92, 0.95])
                 tem_promo = True
                 
-            preco_atual = round(prod["preco_base"] * fator_promo, 2)
-            preco_original = round(prod["preco_base"], 2) if tem_promo else preco_atual
-            desconto_pct = round(((preco_original - preco_atual) / preco_original) * 100, 1) if tem_promo else 0.0
+            preco_atual_val = round(prod["preco_base"] * fator_promo, 2)
+            preco_orig_val = round(prod["preco_base"], 2) if tem_promo else preco_atual_val
+            desconto_pct_val = int(round(((preco_orig_val - preco_atual_val) / preco_orig_val) * 100)) if tem_promo else 0
             
-            parcelamento = "em 10x sem juros" if preco_atual > 300 else ("em 6x sem juros" if preco_atual > 100 else "em 3x sem juros")
+            parcelamento = "em 10x sem juros" if preco_atual_val > 300 else ("em 6x sem juros" if preco_atual_val > 100 else "em 3x sem juros")
             
             base_v = 720 / (rank_atual ** 0.65)
             multiplicador_dia = 1.22 if is_weekend else 1.0
             
             vendas_dia_total = int(max(10, base_v * multiplicador_dia * random.uniform(0.90, 1.12)))
-            faturamento_dia_total = round(vendas_dia_total * preco_atual, 2)
+            faturamento_dia_total = round(vendas_dia_total * preco_atual_val, 2)
+            
+            # Formatação exata compatível com a tabela existente no BigQuery (strings com vírgula)
+            preco_atual_str = str(preco_atual_val).replace(".", ",")
+            preco_orig_str = str(preco_orig_val).replace(".", ",")
+            faturamento_str = str(faturamento_dia_total).replace(".", ",")
+            nota_str = str(round(float(prod["nota"]), 1)).replace(".", ",")
             
             rows.append({
                 "data": hoje,
@@ -291,22 +313,20 @@ def extrair_lote_diario(dt_brt=None):
                 "id_anuncio": str(prod["id_anuncio"]),
                 "titulo_produto": str(prod["titulo"]),
                 "marca": str(prod["marca"]),
-                "preco_atual": float(preco_atual),
-                "preco_original": float(preco_original),
-                "desconto_pct": float(desconto_pct),
+                "preco_atual": str(preco_atual_str),
+                "preco_original": str(preco_orig_str),
+                "desconto_pct": int(desconto_pct_val),
                 "parcelamento": str(parcelamento),
                 "qtd_vendas_estimadas_dia": int(vendas_dia_total),
-                "faturamento_estimado_dia": float(faturamento_dia_total),
-                "avaliacao_nota": float(prod["nota"]),
+                "faturamento_estimado_dia": str(faturamento_str),
+                "avaliacao_nota": str(nota_str),
                 "qtd_avaliacoes": int(prod["avaliacoes"] + random.randint(5, 30)),
                 "is_full": 1 if prod["is_full"] else 0,
                 "frete_gratis": 1 if prod["frete_gratis"] else 0,
                 "loja_oficial": str(prod["loja"]),
                 "reputacao_vendedor": str(prod["reputacao"]),
                 "url_imagem": str(prod["url_imagem"]),
-                "url_produto": str(prod["url_produto"]),
-                "rodada_extracao": str(info_rodada["rotulo"]),
-                "data_hora_extracao": dt_brt.strftime("%Y-%m-%d %H:%M:%S")
+                "url_produto": str(prod["url_produto"])
             })
             
     df = pd.DataFrame(rows)
@@ -317,30 +337,28 @@ def extrair_lote_diario(dt_brt=None):
 # 5. CARGA IDEMPOTENTE NO BIGQUERY
 # ==============================================================================
 def carregar_bigquery(df, client):
-    """Realiza o upload seguro com desduplicação para a tabela no BigQuery."""
+    """Realiza o upload seguro para a tabela no BigQuery."""
     tabela_completa = f"{GCP_PROJECT_ID}.{DATASET_ID}.{TABELA_ID}"
     hoje_str = df["data"].iloc[0].strftime("%Y-%m-%d")
-    rodada_str = df["rodada_extracao"].iloc[0]
     
-    # 1. Deletar registros da data atual caso já existam (garante snapshot atualizado da rodada)
+    # 1. Tentar remover snapshot anterior do mesmo dia (se o billing estiver ativo)
     try:
         query_del = f"DELETE FROM `{tabela_completa}` WHERE data = '{hoje_str}'"
         job_del = client.query(query_del)
         job_del.result()
         logger.info(f"Snapshot anterior de {hoje_str} desduplicado com sucesso no BigQuery.")
     except Exception as e:
-        logger.warning(f"Aviso ao verificar duplicidade no BigQuery: {e}")
+        logger.info(f"Aviso de desduplicação no BigQuery (esperado se estiver no Sandbox gratuito sem Billing): {e}")
         
-    # 2. Inserir lote atualizado via Append com permissão de novos campos
+    # 2. Inserir lote atualizado via Append
     job_config = bigquery.LoadJobConfig(
-        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-        schema_update_options=[bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION]
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND
     )
     
-    logger.info(f"Enviando {len(df)} linhas da rodada '{rodada_str}' para '{tabela_completa}'...")
+    logger.info(f"Enviando {len(df)} linhas para '{tabela_completa}'...")
     job = client.load_table_from_dataframe(df, tabela_completa, job_config=job_config)
     job.result()  # Aguarda conclusão
-    logger.info(f"✅ Carga concluída com sucesso! {len(df)} linhas gravadas no BigQuery ({rodada_str}).")
+    logger.info(f"✅ Carga concluída com sucesso! {len(df)} linhas gravadas no BigQuery.")
 
 # ==============================================================================
 # 6. SINCRONIZAÇÃO LOCAL (PARQUET / CSV)
@@ -348,7 +366,6 @@ def carregar_bigquery(df, client):
 def sincronizar_arquivos_locais(df_dia):
     """Atualiza a base local removendo a data de hoje (se existir) e inserindo o lote novo."""
     hoje_date = df_dia["data"].iloc[0]
-    hoje_str = hoje_date.strftime("%Y-%m-%d")
     
     # 1. Sincronizar Parquet
     if os.path.exists(LOCAL_PARQUET):
@@ -374,7 +391,6 @@ def sincronizar_arquivos_locais(df_dia):
     # 2. Sincronizar CSV
     if os.path.exists(LOCAL_CSV):
         try:
-            # CSV usa formato com ponto e vírgula
             df_hist_csv = pd.read_csv(LOCAL_CSV, sep=";", encoding="utf-8-sig")
             hoje_br = hoje_date.strftime("%d/%m/%Y")
             df_hist_csv = df_hist_csv[df_hist_csv["data"] != hoje_br]

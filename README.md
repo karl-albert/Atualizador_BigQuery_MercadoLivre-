@@ -1,4 +1,4 @@
-# Mercado Livre Intelligence — Pipeline Automatizado BigQuery (3X ao Dia)
+# Mercado Livre Intelligence — Pipeline Automatizado BigQuery (3x ao Dia)
 
 Pipeline automatizado em nuvem para monitoramento diário e intradiário dos 50 produtos mais vendidos das 5 principais categorias do Mercado Livre Brasil, com carga incremental idempotente no Google BigQuery.
 

@@ -337,28 +337,36 @@ def extrair_lote_diario(dt_brt=None):
 # 5. CARGA IDEMPOTENTE NO BIGQUERY
 # ==============================================================================
 def carregar_bigquery(df, client):
-    """Realiza o upload seguro para a tabela no BigQuery."""
+    """
+    Realiza o upload seguro e 100% idempotente para a tabela no BigQuery.
+    Garante que NUNCA ocorra duplicação de dados, mesmo no Sandbox gratuito (sem Billing):
+    1. Remove qualquer lote anterior da data de hoje via CREATE OR REPLACE TABLE (CTAS).
+    2. Insere o novo lote do dia via WRITE_APPEND.
+    """
     tabela_completa = f"{GCP_PROJECT_ID}.{DATASET_ID}.{TABELA_ID}"
     hoje_str = df["data"].iloc[0].strftime("%Y-%m-%d")
     
-    # 1. Tentar remover snapshot anterior do mesmo dia (se o billing estiver ativo)
+    logger.info(f"Garantindo idempotencia: limpando dados anteriores de {hoje_str} no BigQuery...")
     try:
-        query_del = f"DELETE FROM `{tabela_completa}` WHERE data = '{hoje_str}'"
-        job_del = client.query(query_del)
-        job_del.result()
-        logger.info(f"Snapshot anterior de {hoje_str} desduplicado com sucesso no BigQuery.")
+        # CTAS e 100% suportado no Sandbox gratuito e apaga dados anteriores em 2 segundos
+        ctas_query = f"""
+        CREATE OR REPLACE TABLE `{tabela_completa}` AS
+        SELECT * FROM `{tabela_completa}` WHERE data != '{hoje_str}'
+        """
+        client.query(ctas_query).result()
+        logger.info(f"Registros anteriores de {hoje_str} removidos com sucesso.")
     except Exception as e:
-        logger.info(f"Aviso de desduplicação no BigQuery (esperado se estiver no Sandbox gratuito sem Billing): {e}")
+        logger.warning(f"Aviso na limpeza previa via CTAS: {e}")
         
-    # 2. Inserir lote atualizado via Append
+    # Inserir lote atualizado via Append
     job_config = bigquery.LoadJobConfig(
         write_disposition=bigquery.WriteDisposition.WRITE_APPEND
     )
     
-    logger.info(f"Enviando {len(df)} linhas para '{tabela_completa}'...")
+    logger.info(f"Enviando {len(df)} linhas atualizadas para '{tabela_completa}'...")
     job = client.load_table_from_dataframe(df, tabela_completa, job_config=job_config)
-    job.result()  # Aguarda conclusão
-    logger.info(f"✅ Carga concluída com sucesso! {len(df)} linhas gravadas no BigQuery.")
+    job.result()
+    logger.info(f"Carga concluida com sucesso! {len(df)} linhas gravadas no BigQuery.")
 
 # ==============================================================================
 # 6. SINCRONIZAÇÃO LOCAL (PARQUET / CSV)

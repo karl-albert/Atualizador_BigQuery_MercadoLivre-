@@ -3354,6 +3354,14 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
     """
     logger.info("Iniciando sincronizacao automatica com o Joca Bot no Render...")
     url_sync = "https://meli-intelligence-bot.onrender.com/sync_data?secret=meli_joca_sync_2026_karl"
+    url_ping = "https://meli-intelligence-bot.onrender.com/status"
+
+    # Acordar o servidor no Render (caso esteja em cold-start)
+    try:
+        logger.info("Acordando servidor do Joca no Render...")
+        requests.get(url_ping, timeout=45)
+    except Exception as e_p:
+        logger.warning(f"Aviso no ping do Render: {e_p}")
     
     arquivo_enviar = None
     remover_temp = False
@@ -3366,9 +3374,9 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
         elif client:
             temp_pq = os.path.join(SCRIPT_DIR, "Fato_MercadoLivre_MaisVendidos_Sync.parquet")
             tabela_completa = f"{GCP_PROJECT_ID}.{DATASET_ID}.{TABELA_ID}"
-            logger.info(f"Exportando {tabela_completa} do BigQuery para Parquet...")
+            logger.info(f"Exportando {tabela_completa} do BigQuery para Parquet comprimido (ZSTD)...")
             df_full = client.query(f"SELECT * FROM `{tabela_completa}`").to_dataframe()
-            df_full.to_parquet(temp_pq, index=False)
+            df_full.to_parquet(temp_pq, index=False, compression="zstd")
             arquivo_enviar = temp_pq
             remover_temp = True
 
@@ -3380,7 +3388,7 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
         logger.info(f"Enviando base atualizada ({tamanho_mb:.2f} MB) para o Joca...")
 
         with open(arquivo_enviar, "rb") as f:
-            resp = requests.post(url_sync, files={"file": f}, timeout=60)
+            resp = requests.post(url_sync, files={"file": f}, timeout=90)
 
         if resp.status_code == 200:
             res_json = resp.json()

@@ -8,7 +8,10 @@ on:
     - cron: '0 21 * * *'
     # 23h00 Horario de Brasilia (BRT / UTC-3) -> 02h00 UTC (dia seguinte)
     - cron: '0 2 * * *'
-  workflow_dispatch: # Permite execucao manual a qualquer momento via painel do GitHub
+  workflow_dispatch: # Permite execucao manual a qualquer momento via painel do GitHub ou celular
+  push:
+    branches:
+      - main
 
 jobs:
   atualizar-mercadolivre:
@@ -30,7 +33,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Executar Coleta e Carga no BigQuery
+      - name: Executar Coleta, Carga no BigQuery e Sincronizacao com Joca Bot
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mercado-livre-mais-vendidos' }}

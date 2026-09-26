@@ -3347,6 +3347,60 @@ def sincronizar_arquivos_locais(df_dia):
         except Exception as e:
             logger.warning(f"Aviso no CSV: {e}")
 
+def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
+    """
+    Sincroniza instantaneamente a nova base com o Telegram Bot do Joca (Render.com).
+    Recarrega a tabela DuckDB em memoria em segundos, garantindo numeros atualizados.
+    """
+    logger.info("Iniciando sincronizacao automatica com o Joca Bot no Render...")
+    url_sync = "https://meli-intelligence-bot.onrender.com/sync_data?secret=meli_joca_sync_2026_karl"
+    
+    arquivo_enviar = None
+    remover_temp = False
+
+    try:
+        if caminho_parquet and os.path.exists(caminho_parquet):
+            arquivo_enviar = caminho_parquet
+        elif os.path.exists(LOCAL_PARQUET):
+            arquivo_enviar = LOCAL_PARQUET
+        elif client:
+            temp_pq = os.path.join(SCRIPT_DIR, "Fato_MercadoLivre_MaisVendidos_Sync.parquet")
+            tabela_completa = f"{GCP_PROJECT_ID}.{DATASET_ID}.{TABELA_ID}"
+            logger.info(f"Exportando {tabela_completa} do BigQuery para Parquet...")
+            df_full = client.query(f"SELECT * FROM `{tabela_completa}`").to_dataframe()
+            df_full.to_parquet(temp_pq, index=False)
+            arquivo_enviar = temp_pq
+            remover_temp = True
+
+        if not arquivo_enviar or not os.path.exists(arquivo_enviar):
+            logger.warning("[AVISO] Nenhum arquivo Parquet disponivel para sincronizar com o Joca.")
+            return False
+
+        tamanho_mb = os.path.getsize(arquivo_enviar) / (1024 * 1024)
+        logger.info(f"Enviando base atualizada ({tamanho_mb:.2f} MB) para o Joca...")
+
+        with open(arquivo_enviar, "rb") as f:
+            resp = requests.post(url_sync, files={"file": f}, timeout=60)
+
+        if resp.status_code == 200:
+            res_json = resp.json()
+            total_recs = res_json.get('total_registros', 0)
+            data_rec = res_json.get('data_recente', 'N/A')
+            logger.info(f"[OK JOCA] Joca atualizado com sucesso em tempo real! Registros: {total_recs:,} | Data mais recente: {data_rec}")
+            return True
+        else:
+            logger.warning(f"[AVISO JOCA] Resposta da API do Joca ({resp.status_code}): {resp.text}")
+            return False
+    except Exception as e:
+        logger.warning(f"[AVISO JOCA] Falha na comunicacao com o Joca Bot: {e}")
+        return False
+    finally:
+        if remover_temp and arquivo_enviar and os.path.exists(arquivo_enviar):
+            try:
+                os.remove(arquivo_enviar)
+            except Exception:
+                pass
+
 if __name__ == "__main__":
     agora_brt = datetime.now(FUSO_BRT)
     info = identificar_rodada(agora_brt)
@@ -3361,3 +3415,6 @@ if __name__ == "__main__":
         carregar_bigquery(df_lote, bq_client)
     else:
         logger.warning("BigQuery indisponivel. Dados salvos apenas localmente.")
+
+    # Sincroniza imediatamente com o Telegram Bot Joca (Nuvem Render)
+    sincronizar_com_joca_bot(client=bq_client, caminho_parquet=LOCAL_PARQUET)

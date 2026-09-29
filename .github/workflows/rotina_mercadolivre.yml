@@ -1,4 +1,4 @@
-name: Rotina Mercado Livre - BigQuery (3x ao Dia)
+name: Rotina Mercado Livre - BigQuery & Microsoft Fabric (3x ao Dia)
 
 on:
   schedule:
@@ -41,3 +41,16 @@ jobs:
           TABELA_ID: 'Fato_MercadoLivre_MaisVendidos'
         run: |
           python atualizar_mercadolivre.py
+
+      - name: Disparar Atualizacao no Microsoft Fabric (OneLake / Direct Lake)
+        continue-on-error: true
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          FABRIC_WEBHOOK_URL: ${{ secrets.FABRIC_WEBHOOK_URL }}
+          WORKSPACE_ID: "0c2a1a5e-4519-4e4e-b3e6-14288c11291d"
+          PIPELINE_ID_MELI: ${{ secrets.PIPELINE_ID_MELI }}
+          DATASET_ID_MELI: ${{ secrets.DATASET_ID_MELI }}
+        run: |
+          python disparar_fabric_mercadolivre.py

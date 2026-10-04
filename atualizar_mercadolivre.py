@@ -3353,7 +3353,7 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
     Recarrega a tabela DuckDB em memoria em segundos, garantindo numeros atualizados.
     """
     logger.info("Iniciando sincronizacao automatica com o Joca Bot no Render...")
-    url_sync = "https://meli-intelligence-bot.onrender.com/sync_data?secret=meli_joca_sync_2026_karl"
+    url_sync = "https://meli-intelligence-bot.onrender.com/sync_data?secret=joca_sync_2026_karl"
     url_ping = "https://meli-intelligence-bot.onrender.com/status"
 
     # Acordar o servidor no Render (caso esteja em cold-start)

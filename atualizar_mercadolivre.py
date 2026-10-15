@@ -3421,6 +3421,13 @@ if __name__ == "__main__":
     
     if bq_client:
         carregar_bigquery(df_lote, bq_client)
+        
+        # Atualizacao incremental automatica de ML_Cidades (apenas o lote do dia novo)
+        try:
+            from atualizar_ml_cidades_incremental import atualizar_cidades_incremental
+            atualizar_cidades_incremental(df_lote=df_lote, bq_client=bq_client, project_id=GCP_PROJECT_ID)
+        except Exception as e:
+            logger.warning("[AVISO ML_CIDADES] Falha na atualizacao incremental de cidades: " + str(e))
     else:
         logger.warning("BigQuery indisponivel. Dados salvos apenas localmente.")
 

@@ -27,4 +27,4 @@ O workflow está configurado no GitHub Actions com fuso horário ajustado para o
 2. No GitHub, vá em **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**:
    - `GCP_SA_KEY`: Cole o conteúdo JSON da sua chave de Conta de Serviço do Google Cloud.
    - `GCP_PROJECT_ID`: `mercado-livre-mais-vendidos`
-3. Na aba **Actions**, o fluxo já estará ativo com os 3 agendamentos automáticos diários. Você também pode disparar a qualquer momento clicando em **Run workflow**.
+3. Na aba **Actions**, o fluxo já estará ativo com os 3 agendamentos automáticos diários. Você também pode disparar qualquer momento clicando em **Run workflow**.

@@ -1,0 +1,36 @@
+name: Alerta Diário Telegram - ML Cidades (11h00 BRT)
+
+on:
+  schedule:
+    # 11h00 Horário de Brasília (BRT / UTC-3) -> 14h00 UTC
+    - cron: '0 14 * * *'
+  workflow_dispatch: # Permite execução manual a qualquer momento via painel do GitHub ou celular
+
+jobs:
+  enviar-alerta-cidades:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Executar Consulta e Enviar Alerta ao Telegram
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mercado-livre-mais-vendidos' }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || '8916733671:AAH1htvd6VqDKsngdyYsFOaXdvNgUQ0RjyM' }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '891673367' }}
+        run: |
+          python enviar_alerta_diario_cidades.py

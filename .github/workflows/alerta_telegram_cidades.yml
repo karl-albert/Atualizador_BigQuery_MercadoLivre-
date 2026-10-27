@@ -3,7 +3,7 @@ name: Alerta ML Cidades - Faturamento Diário (11h00 e 15h00 BRT)
 on:
   schedule:
     # 11h00 e 15h00 Horário de Brasília (BRT / UTC-3) -> 14h00 e 18h00 UTC
-    - cron: '0 14,18 * * *'
+    - cron: '5 14,18 * * *'
   workflow_dispatch: # Permite disparo manual imediato a qualquer momento
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mercado-livre-mais-vendidos' }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || '8916733671:AAH1htvd6VqDKsngdyYsFOaXdvNgUQ0RjyM' }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '891673367' }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '8269176751' }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
           EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}

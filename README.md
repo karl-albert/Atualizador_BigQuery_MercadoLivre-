@@ -6,7 +6,7 @@ Pipeline automatizado em nuvem para monitoramento diário e intradiário dos 50 
 
 ## ⏰ Cronograma das 3 Atualizações Diárias:
 
-O workflow está configurado no GitHub Actions com fuso horário ajustado para o **Horário de Brasília (BRT / UTC-3)**:
+O workflow está configurado no GitHub Actions com fuso horário ajustado para  **Horário de Brasília (BRT / UTC-3)**:
 
 | Rodada | Horário Brasília (BRT) | Horário GitHub (UTC) | Objetivo Analítico |
 | :--- | :---: | :---: | :--- |

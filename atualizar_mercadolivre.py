@@ -3367,11 +3367,7 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
     remover_temp = False
 
     try:
-        if caminho_parquet and os.path.exists(caminho_parquet):
-            arquivo_enviar = caminho_parquet
-        elif os.path.exists(LOCAL_PARQUET):
-            arquivo_enviar = LOCAL_PARQUET
-        elif client:
+        if client:
             temp_pq = os.path.join(SCRIPT_DIR, "Fato_MercadoLivre_MaisVendidos_Sync.parquet")
             tabela_completa = f"{GCP_PROJECT_ID}.{DATASET_ID}.{TABELA_ID}"
             logger.info(f"Exportando {tabela_completa} do BigQuery para Parquet comprimido (ZSTD)...")
@@ -3379,6 +3375,10 @@ def sincronizar_com_joca_bot(client=None, caminho_parquet=None):
             df_full.to_parquet(temp_pq, index=False, compression="zstd")
             arquivo_enviar = temp_pq
             remover_temp = True
+        elif caminho_parquet and os.path.exists(caminho_parquet):
+            arquivo_enviar = caminho_parquet
+        elif os.path.exists(LOCAL_PARQUET):
+            arquivo_enviar = LOCAL_PARQUET
 
         if not arquivo_enviar or not os.path.exists(arquivo_enviar):
             logger.warning("[AVISO] Nenhum arquivo Parquet disponivel para sincronizar com o Joca.")

@@ -2,14 +2,20 @@ name: Rotina Mercado Livre - BigQuery & Microsoft Fabric (3x ao Dia)
 
 on:
   schedule:
+    # 05h00 Horario de Brasilia (BRT / UTC-3) -> 08h00 UTC
+    - cron: '0 5 * * *'
     # 08h00 Horario de Brasilia (BRT / UTC-3) -> 11h00 UTC
+    - cron: '0 8 * * *'
+    # 11h00 Horario de Brasilia (BRT / UTC-3) -> 13h00 UTC
     - cron: '0 11 * * *'
-    # 15h00 Horario de Brasilia (BRT / UTC-3) -> 18h00 UTC (Teste Imediato 15h)
-    - cron: '35 18 * * *'
+    # 15h00 Horario de Brasilia (BRT / UTC-3) -> 18h00 UTC
+    - cron: '0 15 * * *'
     # 18h00 Horario de Brasilia (BRT / UTC-3) -> 21h00 UTC
+    - cron: '0 18 * * *'
+    # 21h00 Horario de Brasilia (BRT / UTC-3) -> 0h00 UTC
     - cron: '0 21 * * *'
-    # 23h00 Horario de Brasilia (BRT / UTC-3) -> 02h00 UTC (dia seguinte)
-    - cron: '0 2 * * *'
+    # 00h00 Horario de Brasilia (BRT / UTC-3) -> 03h00 UTC
+    - cron: '0 0 * * *'
   workflow_dispatch: # Permite execucao manual a qualquer momento via painel do GitHub ou celular
   push:
     branches:

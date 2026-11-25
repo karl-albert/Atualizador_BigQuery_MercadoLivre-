@@ -1,4 +1,4 @@
-name: Rotina Mercado Livre - BigQuery & Microsoft Fabric (3x ao Dia)
+name: Rotina Mercado Livre - BigQuery & Microsoft Fabric (7x ao Dia)
 
 on:
   schedule:

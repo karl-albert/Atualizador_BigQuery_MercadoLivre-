@@ -4,6 +4,8 @@ on:
   schedule:
     # 08h00 Horario de Brasilia (BRT / UTC-3) -> 11h00 UTC
     - cron: '0 11 * * *'
+    # 15h00 Horario de Brasilia (BRT / UTC-3) -> 18h00 UTC (Teste Imediato 15h)
+    - cron: '0 18 * * *'
     # 18h00 Horario de Brasilia (BRT / UTC-3) -> 21h00 UTC
     - cron: '0 21 * * *'
     # 23h00 Horario de Brasilia (BRT / UTC-3) -> 02h00 UTC (dia seguinte)
@@ -39,7 +41,6 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mercado-livre-mais-vendidos' }}
           DATASET_ID: 'Mercado_Livre'
           TABELA_ID: 'Fato_MercadoLivre_MaisVendidos'
+          POWERBI_REFRESH_WEBHOOK: ${{ secrets.POWERBI_REFRESH_WEBHOOK }}
         run: |
           python atualizar_mercadolivre.py
-
-

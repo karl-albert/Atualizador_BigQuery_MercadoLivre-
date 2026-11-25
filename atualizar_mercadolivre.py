@@ -3433,3 +3433,25 @@ if __name__ == "__main__":
 
     # Sincroniza imediatamente com o Telegram Bot Joca (Nuvem Render)
     sincronizar_com_joca_bot(client=bq_client, caminho_parquet=LOCAL_PARQUET)
+
+#################################################################################################
+## Trecho para disparar o gatilho do whebhook que chama Power Automate e que chama o Power BI para atualizar
+
+    # Logo após: atualizar_cidades_incremental(...)
+    webhook_url = os.environ.get("POWERBI_REFRESH_WEBHOOK")
+    if webhook_url:
+        try:
+            print("🚀 Disparando atualização do Power BI (ML_Cidades)...")
+            requests.post(webhook_url, json={}, timeout=15)
+            print("✅ Power BI notificado com sucesso!")
+        except Exception as e:
+            print(f"⚠️ Falha ao avisar Power BI: {e}")
+
+#################################################################################################
+
+
+
+
+
+
+
